@@ -212,12 +212,12 @@ void MainWindow::on_Pb_Go_clicked()
 
     // Start processing
     H_Viewing_Angle = Eb_HAngle->GetIntValue() ;
-    V_Viewing_Angle = ( Eb_VAngle->GetDoubleValue() / ( double )2 ) ;
+    V_Viewing_Angle = Eb_VAngle->GetDoubleValue() ;
 
     H_Pic_Overlap = settings->Eb_HOverlap->GetIntValue() ;
     V_Pic_Overlap = settings->Eb_VOverlap->GetIntValue() ;
 
-    Actual_V_Angle = V_Viewing_Angle * 2 ;
+    Actual_V_Angle = V_Viewing_Angle ;
 
     if( ui->comboBox->currentText() == "Canon" )
     {
@@ -245,6 +245,7 @@ void MainWindow::on_Pb_Go_clicked()
     V_ROT_arr = V_Min_Step * qFloor( V_ROT / V_Min_Step ) ;
 
     H_Angle_Moved = 0.0 ;
+    V_Angle_Moved = 0.0 ;
 
 
     // Create the list of rows
@@ -260,7 +261,7 @@ void MainWindow::on_Pb_Go_clicked()
     GigaPi_Row_List.push_back( prev_row ) ;
 
 
-    while( double( prev_row.V_Angle + ( V_FOV / 2.0 ) ) < double( V_Viewing_Angle ) )
+    while( double( prev_row.V_Angle + ( double ( V_FOV ) / double ( 2.0 ) ) ) < double( V_Viewing_Angle ) )
     {
         GigaPi_Row new_row ;
 
@@ -322,10 +323,10 @@ void MainWindow::on_Pb_Go_clicked()
         rows += QString::number( row.V_Angle   ) + " " + QString::number( row.V_Overlap ) + ( rows == "" ? ".000000 " : " " ) +
                 QString::number( row.B_NumPics ) + " " + QString::number( row.B_Angle   ) + " " +
                 QString::number( row.H_Angle   ) + " " + QString::number( row.H_Overlap ) + " " +
-                QString::number( row.L_NumPics ) + "\n" ;
+                QString::number( row.L_NumPics ) + "\n\n" ;
     }
 
-    //QMessageBox::information( this, "Rows" , rows , QMessageBox::Default ) ;
+    //QMessageBox::information( 0, "Rows" , rows ) ;
     QMessageBox Go ;
     Go.setFixedSize( this->size() ) ;
     Go.addButton( QMessageBox::Yes ) ;
@@ -382,8 +383,10 @@ void MainWindow::Rotate( Motor motor, double degrees, bool reverse )
     if( delay_int < 1 )
       delay_int = 1 ;
 
-    if( degrees < 0 )
-      degrees = 0 ;
+    if( degrees <= 0.0 )
+    {
+      return ;
+    }
 
 
     double stepper_motor_degrees = motor.worm_wheel_teeth * degrees ;
@@ -561,8 +564,26 @@ void MainWindow::OnGigaPiTimerTick()
             progress->SetStatus( "Moving down..." ) ;
 
 
+            double v_angle_to_move = 0.0 ;
+
+            // there needs to be atleast one more row
+            // to calculate the next angle to move
+            if ( vertical_steps_to_go > 1 )
+            {
+                double this_row_angle = GigaPi_Row_List[ GigaPi_Row_List.size() - vertical_steps_to_go ].V_Angle ;
+                double next_row_angle = GigaPi_Row_List[ GigaPi_Row_List.size() - vertical_steps_to_go +1 ].V_Angle ;
+                v_angle_to_move = next_row_angle - this_row_angle ;
+            }
+            else
+            {
+                // this is the last row so I do not need to move
+                v_angle_to_move = 0.0 ;
+            }
+
             // step down
-            Rotate( Vertical, GigaPi_Row_List[ GigaPi_Row_List.size() - vertical_steps_to_go ].H_Angle, false ) ;
+            Rotate( Vertical, v_angle_to_move, false ) ;
+
+            V_Angle_Moved += v_angle_to_move ;
 
             GigaPi_State = RESET_TO_LEFT ;
 
@@ -585,7 +606,7 @@ void MainWindow::OnGigaPiTimerTick()
 
             --vertical_steps_to_go ;
 
-            // if picutre complete, reset to top
+            // if picture complete, reset to top
             if( vertical_steps_to_go <= 0 )
             {
                 GigaPi_State = RESET_TO_TOP ;
@@ -619,7 +640,9 @@ void MainWindow::OnGigaPiTimerTick()
 
 
             // reset to top
-            Rotate( Vertical, GigaPi_Row_List[ GigaPi_Row_List.size() - vertical_steps_to_go ].H_Angle, true ) ;
+            Rotate( Vertical, V_Angle_Moved, true ) ;
+
+            V_Angle_Moved = 0.0 ;
 
             GigaPi_State = FINISH ;
 
@@ -637,6 +660,7 @@ void MainWindow::OnGigaPiTimerTick()
             vertical_steps_to_go = 0 ;
 
             progress->close() ;
+            this->raise() ;
             break ;
         }
     }
@@ -703,7 +727,7 @@ void MainWindow::on_Pb_Shutdown_clicked()
     QProcess *shutdown = new QProcess( this );
     QString command= "sudo shutdown" ;
     QStringList arguments ;
-    arguments << "-h " << "now" ;
+    arguments << "-h" << "now" ;
     shutdown->start( command, arguments );
 }
 

@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'editbox.h'
 **
-** Created: Sun Apr 21 10:03:04 2013
+** Created: Sat May 25 16:58:39 2013
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.2)
 **
 ** WARNING! All changes made in this file will be lost!

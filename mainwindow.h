@@ -132,6 +132,7 @@ private:
     double V_ROT_arr ;
 
     double H_Angle_Moved ;
+    double V_Angle_Moved ;
 
     QList< GigaPi_Row > GigaPi_Row_List ;
 };
